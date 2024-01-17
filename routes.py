@@ -1,7 +1,7 @@
 
 from fastapi import Depends, APIRouter, Request, Body, Response, HTTPException, status, Form, Cookie
 from sqlalchemy.orm import Session
-from connection import session, get_db, get_current_user
+from connection import session, get_db, get_current_user, create_pc_chain, query_pc_chain, get_phone_number, get_promos
 from schema import Token
 import model
 import userController
@@ -48,51 +48,115 @@ async def signin_auth(response:Response, db: Session = Depends(get_db), form_dat
 # 	else:
 # 		raise HTTPException(status_code=310, detail="Error to authenticate")
 @userRouter.get('/get-user')
-def get_user(db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
+async def get_user(db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
 	user = current_user
 	return user
+
+@userRouter.get('/get-promos')
+async def get_user(db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
+	promos = get_promos(current_user.username)
+	return {"promos": promos}
+
+@userRouter.post('/chain-pc')
+def get_user(db: Session = Depends(get_db), form_data: model.OfficeTablePcRequestForm = Depends()):
+	try:
+		pc_exists = query_pc_chain(hwid=form_data.hwid, pc_name=form_data.pc_name)
+  
+		if not pc_exists:
+			current_time = datetime.now() + timedelta(hours=2)	
+			new_pc = model.OfficeTablePc(
+				hwid=form_data.hwid,
+				pc_name=form_data.pc_name,
+				activated=current_time
+			)
+			pc = create_pc_chain(db=db, media=new_pc)
+			return {'pc': pc}
+	except Exception as e:
+		raise HTTPException(status_code=511, detail=f"Error: {e}")
+
+@userRouter.get('/get-phone-number')
+async def get_number(db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
+	phone_number = get_phone_number(db=db)
+	print(phone_number)
+	return {'number': phone_number}
+	
 
 @userRouter.patch('/update-user-info')
 async def create_task(
 	username: str = Body(embed=True),
 	password: str = Body(embed=True),
 	status: str = Body(embed=True),
-	hwid: str = Body(embed=True),
 	language: str = Body(embed=True),
 	db: Session = Depends(get_db),
 	form_data: model.OfficeTableUserShortRequestForm = Depends(),
   	current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)
 ):
-	if current_user.username == username and current_user.password == password and current_user.status == status and current_user.hwid == hwid:
+	if current_user.username == username and current_user.password == password and current_user.status == status:
 		form_data.username 	= username
 		form_data.password 	= password
 		form_data.status 	= status
-		form_data.hwid 		= hwid
 		form_data.language 	= language
 		
 		db_user = db.query(model.OfficeTableUser).filter_by(
 			username=form_data.username,
 			password=form_data.password,
 			status=form_data.status,
-			hwid=form_data.hwid,
 		).first()
 	
 		
 		if db_user:
-			updated_rows = db.query(model.OfficeTableUser).filter_by(
-				username=form_data.username,
-				password=form_data.password,
-				status=form_data.status,
-				hwid=form_data.hwid,
-			).update({"language": form_data.language})
-			if updated_rows > 0:
-				db.commit()
-				return {
-					"message": f"User has been updated successfully!"
-				}
-			else:
-				return {"message": "No matching rows found for update"}
+			if form_data.language:
+				db_user.language = form_data.language
+    
+			db.commit()
+			db.refresh(db_user)
+			return {"user": db_user}
 		else:
-			return {"error": "Proxy dont found"}
+			return {"error": "User dont found"}
+	else:
+		raise HTTPException(status_code=311, detail="Error user data")
+
+
+@userRouter.patch('/update-number-info')
+async def create_task(
+	username: str = Body(embed=True),
+	password: str = Body(embed=True),
+	status: str = Body(embed=True),
+	db: Session = Depends(get_db),
+	form_data: model.OfficeTablePhoneNumberRequestForm = Depends(),
+  	current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)
+):
+	if current_user.username == username and current_user.password == password and current_user.status == status:
+	
+		db_number = db.query(model.OfficeTablePhoneNumber).filter_by(
+			phone_number=form_data.phone_number
+		).first()
+	
+		
+		if db_number:
+			if form_data.phone_info:
+				db_number.phone_info = form_data.phone_info
+			if form_data.is_active:
+				db_number.is_active = form_data.is_active
+			if form_data.used:
+				db_number.used = form_data.used
+			if form_data.missed:
+				db_number.missed = form_data.missed
+			if form_data.processed:
+				db_number.processed = form_data.processed
+			if form_data.recall:
+				db_number.recall = form_data.recall
+			if form_data.decline:
+				db_number.decline = form_data.decline
+			if form_data.recall_time:
+				db_number.recall_time = form_data.recall_time
+			if form_data.done_number_datetime:
+				db_number.done_number_datetime = form_data.done_number_datetime
+    
+			db.commit()
+			db.refresh(db_number)
+			return {"number": db_number}
+		else:
+			return {"error": "Phone number dont found"}
 	else:
 		raise HTTPException(status_code=311, detail="Error user data")
