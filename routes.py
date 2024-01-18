@@ -1,7 +1,7 @@
 
 from fastapi import Depends, APIRouter, Request, Body, Response, HTTPException, status, Form, Cookie
 from sqlalchemy.orm import Session
-from connection import session, get_db, get_current_user, create_pc_chain, query_pc_chain, get_phone_number, get_promos
+from connection import session, get_db, get_current_user, create_pc_chain, query_pc_chain, get_phone_number, get_promos, create_phone_number
 from schema import Token
 import model
 import userController
@@ -74,6 +74,28 @@ def get_user(db: Session = Depends(get_db), form_data: model.OfficeTablePcReques
 	except Exception as e:
 		raise HTTPException(status_code=511, detail=f"Error: {e}")
 
+@userRouter.post('/create-number')
+def get_user(phone_number: str = Body(embed=True), db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
+	if current_user.status == 'Moderator' or current_user.status == 'Admin':
+		try:
+			current_time = datetime.now() + timedelta(hours=2)
+			new_phone_number = model.OfficeTablePhoneNumber (
+				phone_number=phone_number,
+				is_active=False,
+				used=False,
+				missed=False,
+				processed=False,
+				recall=False,
+				decline=False,
+				phone_datetime=current_time,
+			)
+			number = create_phone_number(db=db, media=new_phone_number)
+			return {'number': number}
+		except Exception as e:
+			raise HTTPException(status_code=511, detail=f"Error: {e}")
+	else:
+		raise HTTPException(status_code=401, detail=f"Access denied")
+
 @userRouter.get('/get-phone-number')
 async def get_number(db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
 	phone_number = get_phone_number(db=db)
@@ -85,29 +107,26 @@ async def get_number(db: Session = Depends(get_db), current_user: model.OfficeTa
 async def create_task(
 	username: str = Body(embed=True),
 	password: str = Body(embed=True),
-	status: str = Body(embed=True),
 	language: str = Body(embed=True),
 	db: Session = Depends(get_db),
 	form_data: model.OfficeTableUserShortRequestForm = Depends(),
   	current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)
 ):
-	if current_user.username == username and current_user.password == password and current_user.status == status:
+	if current_user.username == username and current_user.password == password:
 		form_data.username 	= username
 		form_data.password 	= password
-		form_data.status 	= status
 		form_data.language 	= language
 		
 		db_user = db.query(model.OfficeTableUser).filter_by(
 			username=form_data.username,
 			password=form_data.password,
-			status=form_data.status,
 		).first()
 	
 		
 		if db_user:
 			if form_data.language:
 				db_user.language = form_data.language
-    
+	
 			db.commit()
 			db.refresh(db_user)
 			return {"user": db_user}
@@ -152,7 +171,7 @@ async def create_task(
 				db_number.recall_time = form_data.recall_time
 			if form_data.done_number_datetime:
 				db_number.done_number_datetime = form_data.done_number_datetime
-    
+	
 			db.commit()
 			db.refresh(db_number)
 			return {"number": db_number}

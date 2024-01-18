@@ -93,7 +93,7 @@ class OfficeTableUserShortRequestForm:
         self,
         username: str = Form(),
         password: str = Form(),
-        status: str = Form(),
+        status: str = Form(default=None),
         hwid: str = Form(default=None),
         language: str = Form(),
     ):

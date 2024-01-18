@@ -106,6 +106,23 @@ def get_phone_number(db):
 
     return None
 
+def create_phone_number(db: Session, media: schema.OfficeNumberSchema):
+    new_number = OfficeTablePhoneNumber(
+        phone_number        = media.phone_number,
+        is_active          	= media.is_active,
+        used          		= media.used,
+        missed        		= media.missed,
+        processed        	= media.processed,
+        recall        		= media.recall,
+        decline        		= media.decline,
+        phone_datetime      = media.phone_datetime,
+    )
+    print(new_number)
+    db.add(new_number)
+    db.commit()
+    db.refresh(new_number)
+    return new_number
+
 def create_pc_chain(db: Session, media: schema.OfficePcSchema):
     new_pc = OfficeTablePc(
         hwid             = media.hwid,

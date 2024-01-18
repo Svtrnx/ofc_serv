@@ -9,6 +9,17 @@ class OfficePcSchema(BaseModel):
     hwid: Optional[str]=None
     pc_name: Optional[str]=None
     activated: Optional[datetime]=None
+    
+class OfficeNumberSchema(BaseModel):
+    id: int
+    phone_number: Optional[str]=None
+    is_active: Optional[bool]=None
+    used: Optional[bool]=None
+    missed: Optional[bool]=None
+    processed: Optional[bool]=None
+    recall: Optional[bool]=None
+    decline: Optional[bool]=None
+    phone_datetime: Optional[datetime]=None
 
 class Token(BaseModel):
     access_token: str
