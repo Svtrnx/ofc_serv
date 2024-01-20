@@ -1,7 +1,7 @@
 
 from fastapi import Depends, APIRouter, Request, Body, Response, HTTPException, status, Form, Cookie
 from sqlalchemy.orm import Session
-from connection import session, get_db, get_current_user, create_pc_chain, query_pc_chain, get_phone_number, get_promos, create_phone_number
+from connection import session, get_db, get_current_user, create_pc_chain, query_pc_chain, get_phone_number, get_promos, create_phone_number, create_log, get_logs_query, get_users_usernames
 from schema import Token
 import model
 import userController
@@ -17,6 +17,36 @@ userRouter = APIRouter()
 @userRouter.get("/index")
 def get_index(request: Request):
 	return {"request": request.url}
+
+@userRouter.post("/create-log")
+async def create_log_func(log_info: str = Body(embed=True), db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
+	try:
+		current_time = datetime.now() + timedelta(hours=2)
+		new_log = model.OfficeTableLog (
+			log_info=log_info,
+			username=current_user.username,
+			log_datetime=current_time,
+		)
+		log = create_log(db=db, log=new_log)
+		return log
+	except Exception as e:
+		raise HTTPException(status_code=511, detail=f"Error: {e}")
+
+@userRouter.get('/get-logs')
+async def get_logs(current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
+	if current_user.status == 'Moderator' or current_user.status == 'Admin':
+		logs = get_logs_query()
+		return logs
+	else:
+		raise HTTPException(status_code=401, detail=f"Access denied")
+
+@userRouter.get('/get-usernames')
+async def get_logs(db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
+	if current_user.status == 'Moderator' or current_user.status == 'Admin':
+		usernames = get_users_usernames(db=db)
+		return usernames
+	else:
+		raise HTTPException(status_code=401, detail=f"Access denied")
 
 @userRouter.post('/signin', response_model=Token)
 async def signin_auth(response:Response, db: Session = Depends(get_db), form_data: model.OAuth2PasswordRequestFormSignin = Depends()):
@@ -37,20 +67,14 @@ async def signin_auth(response:Response, db: Session = Depends(get_db), form_dat
 					secure=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 600) 
 	return response
 
-# @userRouter.get('/get-user')
-# def get_user(username: str, db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
-# 	if current_user.username == username:
-# 		user = get_current_user(username)
-# 		if user:
-# 			return {"user": user}
-# 		else:
-# 			raise HTTPException(status_code=309, detail="Dont found user")
-# 	else:
-# 		raise HTTPException(status_code=310, detail="Error to authenticate")
+
 @userRouter.get('/get-user')
 async def get_user(db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
-	user = current_user
-	return user
+	try:	
+		user = current_user
+		return user.json()
+	except Exception as e:
+			raise HTTPException(status_code=511, detail=f"Error: {e}")
 
 @userRouter.get('/get-promos')
 async def get_user(db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):

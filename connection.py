@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, and_, desc
 from sqlalchemy.orm import sessionmaker
-from model import Base, OfficeTableUser, OfficeTablePc, OfficeTablePhoneNumber, OfficeTablePromocodes
+from model import Base, OfficeTableUser, OfficeTablePc, OfficeTablePhoneNumber, OfficeTablePromocodes, OfficeTableLog
 from config import DB_NAME, DB_HOST, DB_PORT, DB_USER, DB_PASS
 import datetime
 from sqlalchemy.orm import Session
@@ -32,6 +32,16 @@ def get_promos(current_user):
 
     return results
 
+def get_logs_query():
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    results = session.query(OfficeTableLog).all()
+
+    session.close()
+
+    return results
+
 def get_user_only_by_username(db: Session, username: str):
     try:
         record = db.query(OfficeTableUser).filter((OfficeTableUser.username == username)).first()
@@ -41,6 +51,17 @@ def get_user_only_by_username(db: Session, username: str):
     except Exception as e:
         db.rollback()
         return f"Error getting user by username: {e}"
+    
+def get_users_usernames(db: Session):
+    try:
+        users = db.query(OfficeTableUser).all()
+        usernames = [user.username for user in users]
+        print(usernames)
+        return usernames
+    except Exception as e:
+        db.rollback()
+        return f"Error getting users usernames: {e}"
+
 
 def get_user_by_username(db: Session, username: str, password: str):
     try:
@@ -104,7 +125,7 @@ def get_phone_number(db):
 
         return number_data
 
-    return None
+    return {'phone_number': 'No numbers in the database!'}
 
 def create_phone_number(db: Session, media: schema.OfficeNumberSchema):
     new_number = OfficeTablePhoneNumber(
@@ -122,6 +143,17 @@ def create_phone_number(db: Session, media: schema.OfficeNumberSchema):
     db.commit()
     db.refresh(new_number)
     return new_number
+
+def create_log(db: Session, log: schema.OfficeLogSchema):
+    new_log = OfficeTableLog(
+        log_info       	= log.log_info,
+        username        = log.username,
+        log_datetime    = log.log_datetime,
+    )
+    db.add(new_log)
+    db.commit()
+    db.refresh(new_log)
+    return new_log
 
 def create_pc_chain(db: Session, media: schema.OfficePcSchema):
     new_pc = OfficeTablePc(

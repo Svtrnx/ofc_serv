@@ -17,6 +17,17 @@ class OfficeTableUser(Base):
     hwid = Column(String)
     language = Column(String)
     
+    def json(self):
+        return {
+            "id": self.id,
+            "username": self.username,
+            "password": self.password,
+            "balance": float(self.balance),  # Convert Numeric to float
+            "status": self.status,
+            "hwid": self.hwid,
+            "language": self.language
+        }
+    
 class OfficeTablePhoneNumber(Base):
     __tablename__ = 'phone_numbers'
 
@@ -55,6 +66,15 @@ class OfficeTablePromocodes(Base):
     promocode = Column(String)
     username = Column(String)
     promo_datetime = Column(DateTime)
+    
+  
+class OfficeTableLog(Base):
+    __tablename__ = 'logs'
+
+    id = Column(Integer, primary_key=True)
+    log_info = Column(String)
+    username = Column(String)
+    log_datetime = Column(DateTime)
     
 
 class OfficeTablePcRequestForm:

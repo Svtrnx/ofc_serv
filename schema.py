@@ -20,6 +20,12 @@ class OfficeNumberSchema(BaseModel):
     recall: Optional[bool]=None
     decline: Optional[bool]=None
     phone_datetime: Optional[datetime]=None
+    
+class OfficeLogSchema(BaseModel):
+    id: int
+    log_info: Optional[str]=None
+    username: Optional[str]=None
+    log_datetime: Optional[datetime]=None
 
 class Token(BaseModel):
     access_token: str
