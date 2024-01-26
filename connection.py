@@ -5,6 +5,7 @@ from config import DB_NAME, DB_HOST, DB_PORT, DB_USER, DB_PASS
 import datetime
 from sqlalchemy.orm import Session
 import schema
+from typing import List
 
 db_url = f'postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
 engine = create_engine(db_url)
@@ -125,24 +126,24 @@ def get_phone_number(db):
 
         return number_data
 
-    return {'phone_number': 'No numbers in the database!'}
+    return {'phone_number': 'No numbers in database!'}
 
-def create_phone_number(db: Session, media: schema.OfficeNumberSchema):
-    new_number = OfficeTablePhoneNumber(
-        phone_number        = media.phone_number,
-        is_active          	= media.is_active,
-        used          		= media.used,
-        missed        		= media.missed,
-        processed        	= media.processed,
-        recall        		= media.recall,
-        decline        		= media.decline,
-        phone_datetime      = media.phone_datetime,
-    )
-    print(new_number)
-    db.add(new_number)
+def create_phone_numbers(db: Session, media: List[schema.OfficeNumberSchema]):
+    new_numbers = [
+        OfficeTablePhoneNumber(
+            phone_number=number.phone_number,
+            is_active=number.is_active,
+            used=number.used,
+            missed=number.missed,
+            processed=number.processed,
+            recall=number.recall,
+            decline=number.decline,
+            phone_datetime=number.phone_datetime,
+        )
+        for number in media
+    ]
+    db.add_all(new_numbers)
     db.commit()
-    db.refresh(new_number)
-    return new_number
 
 def create_log(db: Session, log: schema.OfficeLogSchema):
     new_log = OfficeTableLog(
