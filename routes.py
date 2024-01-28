@@ -1,7 +1,7 @@
 
 from fastapi import Depends, APIRouter, Request, Body, Response, HTTPException, status, Form, Cookie
 from sqlalchemy.orm import Session
-from connection import session, get_db, get_current_user, create_pc_chain, query_pc_chain, get_phone_number, get_promos, create_phone_numbers, create_log, get_logs_query, get_users_usernames
+from connection import session, get_db, get_current_user, get_user_password, delete_users, create_user, create_pc_chain, query_pc_chain, get_daily_stats, get_users, get_phone_number, get_promos, create_phone_numbers, create_log, get_logs_query, get_users_usernames, get_phone_numbers_stats
 from schema import Token
 import model
 import userController
@@ -101,28 +101,28 @@ def get_user(db: Session = Depends(get_db), form_data: model.OfficeTablePcReques
 
 @userRouter.post('/create-numbers')
 def create_numbers(phone_numbers: List[str] = Body(...), db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
-    if current_user.status == 'Moderator' or current_user.status == 'Admin':
-        try:
-            current_time = datetime.now() + timedelta(hours=2)
-            new_numbers = [
-                model.OfficeTablePhoneNumber(
-                    phone_number=number,
-                    is_active=False,
-                    used=False,
-                    missed=False,
-                    processed=False,
-                    recall=False,
-                    decline=False,
-                    phone_datetime=current_time,
-                )
-                for number in phone_numbers
-            ]
-            create_phone_numbers(db=db, media=new_numbers)
-            return {'status': 'success'}
-        except Exception as e:
-            raise HTTPException(status_code=511, detail=f"Error: {e}")
-    else:
-        raise HTTPException(status_code=401, detail=f"Access denied")
+	if current_user.status == 'Moderator' or current_user.status == 'Admin':
+		try:
+			current_time = datetime.now() + timedelta(hours=2)
+			new_numbers = [
+				model.OfficeTablePhoneNumber(
+					phone_number=number,
+					is_active=False,
+					used=False,
+					missed=False,
+					processed=False,
+					recall=False,
+					decline=False,
+					phone_datetime=current_time,
+				)
+				for number in phone_numbers
+			]
+			create_phone_numbers(db=db, media=new_numbers)
+			return {'status': 'success'}
+		except Exception as e:
+			raise HTTPException(status_code=511, detail=f"Error: {e}")
+	else:
+		raise HTTPException(status_code=401, detail=f"Access denied")
 
 @userRouter.get('/get-phone-number')
 async def get_number(db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
@@ -178,27 +178,41 @@ async def create_task(
 		db_number = db.query(model.OfficeTablePhoneNumber).filter_by(
 			phone_number=form_data.phone_number
 		).first()
+  
+		user_work = False
 	
 		
 		if db_number:
 			if form_data.phone_info:
 				db_number.phone_info = form_data.phone_info
+				user_work = True
 			if form_data.is_active is not None:
 				db_number.is_active = form_data.is_active
+				user_work = True
 			if form_data.used is not None:
 				db_number.used = form_data.used
+				user_work = True
 			if form_data.missed is not None:
 				db_number.missed = form_data.missed
+				user_work = True
 			if form_data.processed is not None:
 				db_number.processed = form_data.processed
+				user_work = True
 			if form_data.recall is not None:
 				db_number.recall = form_data.recall
+				user_work = True
 			if form_data.decline is not None:
 				db_number.decline = form_data.decline
+				user_work = True
 			if form_data.recall_time:
 				db_number.recall_time = form_data.recall_time
+				user_work = True
 			if form_data.done_number_datetime:
 				db_number.done_number_datetime = form_data.done_number_datetime
+				user_work = True
+	
+			if user_work:
+				db_number.user_work = current_user.username
 	
 			db.commit()
 			db.refresh(db_number)
@@ -207,3 +221,71 @@ async def create_task(
 			return {"error": "Phone number dont found"}
 	else:
 		raise HTTPException(status_code=311, detail="Error user data")
+
+
+@userRouter.get('/get-phone-numbers-stats')
+async def get_number(db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
+	if current_user.status == 'Moderator' or current_user.status == 'Admin':	
+		phone_numbers = get_phone_numbers_stats(db=db)
+		return phone_numbers
+	else:
+		raise HTTPException(status_code=401, detail=f"Access denied")
+
+@userRouter.get('/get-phone-numbers-daily-stats')
+async def get_number(db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
+	if current_user.status == 'Moderator' or current_user.status == 'Admin':	
+		phone_numbers = get_daily_stats(db=db)
+		return phone_numbers
+	else:
+		raise HTTPException(status_code=401, detail=f"Access denied")
+
+@userRouter.get('/get-users')
+async def get_users_func(db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
+	if current_user.status == 'Moderator' or current_user.status == 'Admin':
+		users = get_users(db=db, current_user=current_user.username)
+		return users
+	else:
+		raise HTTPException(status_code=401, detail=f"Access denied")
+
+
+@userRouter.post("/create-user")
+async def create_user_func(db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user), form_data: model.OfficeTableCreateUserRequestForm = Depends()):
+	if current_user.status == 'Moderator' or current_user.status == 'Admin':
+		if form_data.status != 'Moderator' and form_data.status != 'Worker':
+			raise HTTPException(status_code=402, detail=f"Error to create user, invalid status!")
+		if form_data.status == 'Admin':
+			raise HTTPException(status_code=402, detail=f"Access denied!")
+		if form_data.status == 'Moderator':
+			if current_user.status != 'Admin':
+				raise HTTPException(status_code=402, detail=f"Access denied!")
+		if form_data.status == 'Worker':
+			if current_user.status != 'Moderator':
+				raise HTTPException(status_code=402, detail=f"Access denied!")
+		try:
+			current_time = datetime.now() + timedelta(hours=2)
+			new_user = model.OfficeTableUser (
+				username=form_data.username,
+				password=form_data.password,
+				balance=form_data.balance,
+				status=form_data.status,
+				language=form_data.language,
+				reg_datetime=current_time,
+			)
+			user = create_user(db=db, user=new_user)
+			return user
+		except Exception as e:
+			raise HTTPException(status_code=511, detail=f"Error: {e}")
+	else:
+			raise HTTPException(status_code=401, detail=f"Access denied")
+
+
+@userRouter.post('/delete-users')
+def delete_users_func(users: List[List[str]] = Body(...), db: Session = Depends(get_db), current_user: model.OfficeTableUserRequestForm = Depends(get_current_user)):
+    if current_user.status == 'Admin':
+        try:
+            delete_users(db=db, user_send=users)
+            return {'status': 'successfully deleted'}
+        except Exception as e:
+            raise HTTPException(status_code=511, detail=f"Error: {e}")
+    else:
+        raise HTTPException(status_code=401, detail=f"Access denied")

@@ -26,6 +26,21 @@ class OfficeLogSchema(BaseModel):
     log_info: Optional[str]=None
     username: Optional[str]=None
     log_datetime: Optional[datetime]=None
+    
+class OfficeUserSchema(BaseModel):
+    id: int
+    username: Optional[str]=None
+    password: Optional[str]=None
+    balance: Optional[int]=None
+    status: Optional[str]=None
+    language: Optional[str]=None
+    reg_datetime: Optional[datetime]=None
+    
+class OfficeUserSchemaShort(BaseModel):
+    id: int
+    username: Optional[str]=None
+    status: Optional[str]=None
+    language: Optional[str]=None
 
 class Token(BaseModel):
     access_token: str

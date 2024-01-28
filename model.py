@@ -10,39 +10,42 @@ class OfficeTableUser(Base):
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True)
-    username = Column(String)
-    password = Column(String)
-    balance = Column(Numeric(10, 2), default=0.00)
-    status = Column(String)
-    hwid = Column(String)
-    language = Column(String)
+    username = Column(String, index=True)
+    password = Column(String, index=True)
+    balance = Column(Numeric(10, 2), default=0.00, index=True)
+    status = Column(String, index=True)
+    hwid = Column(String, index=True)
+    language = Column(String, index=True)
+    reg_datetime = Column(DateTime, index=True)
     
     def json(self):
         return {
             "id": self.id,
             "username": self.username,
             "password": self.password,
-            "balance": float(self.balance),  # Convert Numeric to float
+            "balance": float(self.balance),
             "status": self.status,
             "hwid": self.hwid,
-            "language": self.language
+            "language": self.language,
+            "reg_datetime": self.reg_datetime
         }
     
 class OfficeTablePhoneNumber(Base):
     __tablename__ = 'phone_numbers'
 
     id = Column(Integer, primary_key=True)
-    phone_number = Column(String)
-    phone_info = Column(String)
-    is_active = Column(Boolean)
-    used = Column(Boolean)
-    missed = Column(Boolean)
-    processed = Column(Boolean)
-    recall = Column(Boolean)
-    decline = Column(Boolean)
-    phone_datetime = Column(DateTime)
-    recall_time = Column(DateTime)
-    done_number_datetime = Column(DateTime)
+    phone_number = Column(String, index=True)
+    phone_info = Column(String, index=True)
+    user_work = Column(String, index=True)
+    is_active = Column(Boolean, index=True)
+    used = Column(Boolean, index=True)
+    missed = Column(Boolean, index=True)
+    processed = Column(Boolean, index=True)
+    recall = Column(Boolean, index=True)
+    decline = Column(Boolean, index=True)
+    phone_datetime = Column(DateTime, index=True)
+    recall_time = Column(DateTime, index=True)
+    done_number_datetime = Column(DateTime, index=True)
 
 
 class OfficeTablePc(Base):
@@ -57,24 +60,24 @@ class OfficeTableKey(Base):
     __tablename__ = 'keys'
 
     id = Column(Integer, primary_key=True)
-    soft_key = Column(String)
+    soft_key = Column(String, index=True)
   
 class OfficeTablePromocodes(Base):
     __tablename__ = 'promos'
 
     id = Column(Integer, primary_key=True)
-    promocode = Column(String)
-    username = Column(String)
-    promo_datetime = Column(DateTime)
+    promocode = Column(String, index=True)
+    username = Column(String, index=True)
+    promo_datetime = Column(DateTime, index=True)
     
   
 class OfficeTableLog(Base):
     __tablename__ = 'logs'
 
     id = Column(Integer, primary_key=True)
-    log_info = Column(String)
-    username = Column(String)
-    log_datetime = Column(DateTime)
+    log_info = Column(String, index=True)
+    username = Column(String, index=True)
+    log_datetime = Column(DateTime, index=True)
     
 
 class OfficeTablePcRequestForm:
@@ -119,6 +122,24 @@ class OfficeTableUserShortRequestForm:
     ):
         self.username = username
         self.password = password
+        self.status = status
+        self.hwid = hwid
+        self.language = language
+        
+class OfficeTableCreateUserRequestForm:
+	
+    def __init__(
+        self,
+        username: str = Form(),
+        password: str = Form(),
+        balance: int = Form(default=0),
+        status: str = Form(),
+        hwid: str = Form(default=None),
+        language: str = Form(),
+    ):
+        self.username = username
+        self.password = password
+        self.balance = balance
         self.status = status
         self.hwid = hwid
         self.language = language
